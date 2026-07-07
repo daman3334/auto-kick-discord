@@ -1,14 +1,14 @@
-const { Client, GatewayIntentBits } = require("discord.js");
+const { Client, GatewayIntentBits, PermissionsBitField } = require("discord.js");
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers]
 });
 
-client.once("ready", () => {
+client.once("clientReady", () => {
   console.log(`Kick AFK+ is online as ${client.user.tag}`);
 
-  setInterval(checkMembers, 60 * 60 * 1000);
   checkMembers();
+  setInterval(checkMembers, 60 * 60 * 1000);
 });
 
 async function checkMembers() {
@@ -20,13 +20,18 @@ async function checkMembers() {
 
   for (const member of members.values()) {
     if (member.user.bot) continue;
+    if (member.permissions.has(PermissionsBitField.Flags.Administrator)) continue;
 
     const hasVaultDweller = member.roles.cache.has(process.env.VAULT_DWELLER_ROLE_ID);
     const beenHereTooLong = now - member.joinedTimestamp >= seventyTwoHours;
 
     if (!hasVaultDweller && beenHereTooLong) {
-      await member.kick("Did not complete Rules/Roles within 72 hours");
-      console.log(`Kicked ${member.user.tag}`);
+      try {
+        await member.kick("Did not complete Rules/Roles within 72 hours");
+        console.log(`Kicked ${member.user.tag}`);
+      } catch (err) {
+        console.log(`Could not kick ${member.user.tag}: ${err.message}`);
+      }
     }
   }
 }
